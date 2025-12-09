@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String         @id @default(cuid())
+  email             String         @unique
+  name              String?
+  password          String
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  availabilities    Availability[]
+  dateRangeSettings DateRangeSettings?
+  games             Game[]         // Games this user creates (as DM)
+  subscriptions      GameSubscription[] // Games this user subscribes to (as player)
+  timeRanges         TimeRange[]     // Player's available time ranges
+}
+
+model Availability {
+  id         String   @id @default(cuid())
+  userId     String
+  date       String   // Format: YYYY-MM-DD
+  isAvailable Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date]) // One availability record per user per date
+}
+
+model DateRangeSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  startDate String   // Format: YYYY-MM-DD
+  endDate   String   // Format: YYYY-MM-DD
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Game {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  dmId        String   // User who created game (Dungeon Master)
+  startDate   String?  // Format: YYYY-MM-DD (null for "always available")
+  endDate     String?  // Format: YYYY-MM-DD (null for "always available")
+  isAlwaysAvailable Boolean @default(false) // For games that are always open
+  maxPlayers  Int?     // Maximum number of players
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  dm          User              @relation(fields: [dmId], references: [id], onDelete: Cascade)
+  subscriptions GameSubscription[]
+  sessionDays  GameSessionDay[]  // Specific session days scheduled by DM
+  
+  @@index([dmId])
+}
+
+model GameSessionDay {
+  id         String   @id @default(cuid())
+  gameId     String
+  date        String   // Format: YYYY-MM-DD
+  startTime   String?  // Format: HH:MM (optional start time)
+  endTime     String?  // Format: HH:MM (optional end time)
+  notes       String?  // Session notes or description
+  isConfirmed Boolean @default(false) // DM confirms this is a play day
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  game       Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  
+  @@unique([gameId, date]) // One session day per game per date
+  @@index([gameId])
+}
+
+model GameSubscription {
+  id         String   @id @default(cuid())
+  gameId     String
+  userId     String
+  startTime   String?  // Player's preferred start time
+  endTime     String?  // Player's preferred end time
+  createdAt  DateTime @default(now())
+  
+  // Relations
+  game       Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([gameId, userId]) // One subscription per user per game
+  @@index([gameId])
+  @@index([userId])
+}
+
+model TimeRange {
+  id         String   @id @default(cuid())
+  userId     String
+  dayOfWeek  Int      // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime  String   // Format: HH:MM
+  endTime    String   // Format: HH:MM
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, dayOfWeek]) // One time range per user per day
+  @@index([userId])
+}
