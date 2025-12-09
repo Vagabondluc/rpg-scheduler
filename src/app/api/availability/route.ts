@@ -144,41 +144,34 @@ export async function POST(request: NextRequest) {
       dates.includes(date)
     )
 
-    // Update, create, or delete availability records
-    await db.$transaction(async (tx) => {
-      for (const [date, isAvailable] of validAvailabilities) {
-        // If user cleared availability (null), delete any existing record
+    // Apply per-date operations and accumulate results so a single failure doesn't abort all changes
+    const results: Array<{ date: string; action: 'created' | 'updated' | 'deleted' | 'no-op' | 'error'; error?: string }> = []
+
+    for (const [date, isAvailable] of validAvailabilities) {
+      try {
+        // If user cleared availability (null), delete existing record if present
         if (isAvailable === null) {
-          await tx.availability.deleteMany({
-            where: { userId: payload.userId, date }
-          })
+          const del = await db.availability.deleteMany({ where: { userId: payload.userId, date } })
+          results.push({ date, action: del.count > 0 ? 'deleted' : 'no-op' })
           continue
         }
 
-        // Otherwise upsert with explicit boolean
-        await tx.availability.upsert({
-          where: {
-            userId_date: {
-              userId: payload.userId,
-              date: date
-            }
-          },
-          update: {
-            isAvailable: Boolean(isAvailable)
-          },
-          create: {
-            userId: payload.userId,
-            date: date,
-            isAvailable: Boolean(isAvailable)
-          }
-        })
+        // Determine whether to create or update so we can report which happened
+        const existing = await db.availability.findUnique({ where: { userId_date: { userId: payload.userId, date } } })
+        if (existing) {
+          await db.availability.update({ where: { id: existing.id }, data: { isAvailable: Boolean(isAvailable) } })
+          results.push({ date, action: 'updated' })
+        } else {
+          await db.availability.create({ data: { userId: payload.userId, date, isAvailable: Boolean(isAvailable) } })
+          results.push({ date, action: 'created' })
+        }
+      } catch (err: any) {
+        console.error('Availability operation failed for', date, err)
+        results.push({ date, action: 'error', error: err?.message || String(err) })
       }
-    })
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Availability saved successfully'
-    })
+    return NextResponse.json({ success: true, results })
   } catch (error) {
     console.error('Error saving availability:', error)
     return NextResponse.json(

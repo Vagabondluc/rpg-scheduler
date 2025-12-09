@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { gameId } = body
+      const gameId = body.gameId as string
 
     if (!gameId) {
       return NextResponse.json(
@@ -41,22 +41,9 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       )
     }
-
-    // Check if user is already subscribed
-    const existingSubscription = await db.gameSubscription.findUnique({
-      where: {
-        gameId_userId: {
-          gameId: gameId,
-          userId: payload.userId
-        }
-      }
-    })
-
-    if (existingSubscription) {
-      return NextResponse.json(
-        { success: false, error: 'Already subscribed to this game' },
-        { status: 409 }
-      )
+      // If already subscribed, return success (idempotent)
+      const already = await db.gameSubscription.findFirst({ where: { gameId, userId: payload.userId } })
+      if (already) return NextResponse.json({ success: true, subscription: already })
     }
 
     // Check if game has max players limit
@@ -145,19 +132,9 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Delete subscription
-    const deletedSubscription = await db.gameSubscription.deleteMany({
-      where: {
-        gameId: gameId,
-        userId: payload.userId
-      }
-    })
+      // Delete any subscription(s) for this user & game. If none existed, still return success (idempotent)
+      await db.gameSubscription.deleteMany({ where: { gameId, userId: payload.userId } })
 
-    if (deletedSubscription.count === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Subscription not found' },
-        { status: 404 }
-      )
-    }
 
     return NextResponse.json({
       success: true,
