@@ -150,7 +150,7 @@ export default function AvailabilityCalendar() {
         setHasCreatedGames(true)
       }
       const userSubscribedGame = gamesData.games.some(game => 
-        game.subscriptions.some(sub => sub.user.id === user?.id)
+        (game.subscriptions || []).some(sub => sub.user.id === user?.id)
       )
       if (userSubscribedGame) {
         setHasSubscribedGames(true)
