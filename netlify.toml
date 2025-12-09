@@ -1,6 +1,6 @@
 [build]
-  # Run Prisma Client generation inside the Netlify build to avoid cached/outdated binaries
-  command = "npx prisma generate && npm run build"
+  # Prepare DATABASE_URL from Netlify DB vars, generate Prisma client, then build
+  command = "npm run build:netlify"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
