@@ -26,6 +26,12 @@ export function DateRangePicker({
     return new Date().toISOString().split('T')[0]
   }
 
+  const getMaxFutureDate = (yearsAhead = 10) => {
+    const now = new Date()
+    const max = new Date(now.getFullYear() + yearsAhead, 11, 31)
+    return max.toISOString().split('T')[0]
+  }
+
   const getThisMonth = () => {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -82,7 +88,7 @@ export function DateRangePicker({
               type="date"
               value={startDate}
               onChange={(e) => onStartDateChange(e.target.value)}
-              max={endDate || getToday()}
+              max={endDate || getMaxFutureDate(10)}
             />
           </div>
           <div className="space-y-2">
@@ -93,7 +99,7 @@ export function DateRangePicker({
               value={endDate}
               onChange={(e) => onEndDateChange(e.target.value)}
               min={startDate}
-              max={getToday()}
+              max={getMaxFutureDate(10)}
             />
           </div>
         </div>
