@@ -1,0 +1,7 @@
+[build]
+  command = "npm run build"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Leave publish blank — the plugin configures the correct output for Next.js sites.
