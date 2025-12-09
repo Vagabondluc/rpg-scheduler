@@ -44,7 +44,6 @@ export async function POST(request: NextRequest) {
       // If already subscribed, return success (idempotent)
       const already = await db.gameSubscription.findFirst({ where: { gameId, userId: payload.userId } })
       if (already) return NextResponse.json({ success: true, subscription: already })
-    }
 
     // Check if game has max players limit
     if (game.maxPlayers) {
