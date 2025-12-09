@@ -128,12 +128,15 @@ export async function GET(request: NextRequest) {
         const availablePlayers = userAvailabilities
           .filter(avail => avail.date === date && avail.isAvailable)
           .map(avail => avail.user)
-        
+
         const subscribedPlayers = relevantSubscriptions
           .filter(sub => 
             availablePlayers.some(player => player.id === sub.user.id)
           )
           .map(sub => sub.user)
+
+        // Find any sessionDay scheduled for this game on this date
+        const sessionDay = (game.sessionDays || []).find(sd => sd.date === date) || null
 
         return {
           date,

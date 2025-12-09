@@ -144,9 +144,18 @@ export async function POST(request: NextRequest) {
       dates.includes(date)
     )
 
-    // Update or create availability records
+    // Update, create, or delete availability records
     await db.$transaction(async (tx) => {
       for (const [date, isAvailable] of validAvailabilities) {
+        // If user cleared availability (null), delete any existing record
+        if (isAvailable === null) {
+          await tx.availability.deleteMany({
+            where: { userId: payload.userId, date }
+          })
+          continue
+        }
+
+        // Otherwise upsert with explicit boolean
         await tx.availability.upsert({
           where: {
             userId_date: {
@@ -155,12 +164,12 @@ export async function POST(request: NextRequest) {
             }
           },
           update: {
-            isAvailable: isAvailable as boolean
+            isAvailable: Boolean(isAvailable)
           },
           create: {
             userId: payload.userId,
             date: date,
-            isAvailable: isAvailable as boolean
+            isAvailable: Boolean(isAvailable)
           }
         })
       }
