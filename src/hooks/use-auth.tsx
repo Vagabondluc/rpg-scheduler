@@ -27,6 +27,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth()
   }, [])
 
+  // Ensure client is logged out when the page is unloaded/reloaded
+  useEffect(() => {
+    const handleUnload = () => {
+      try {
+        const url = '/api/auth/logout'
+        // Prefer sendBeacon for unload reliability
+        if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
+          // sendBeacon expects a Blob / string; empty body is fine
+          ;(navigator as any).sendBeacon(url, '')
+        } else {
+          // Fallback to fetch with keepalive
+          fetch(url, { method: 'POST', keepalive: true })
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unload', handleUnload)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('unload', handleUnload)
+      }
+    }
+  }, [])
+
   const checkAuth = async () => {
     try {
       const response = await fetch('/api/auth/me')
