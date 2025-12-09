@@ -16,6 +16,7 @@ import {
   LogOut, 
   Gamepad2,
   HelpCircle,
+  Crown,
   ArrowRight,
   Info,
   Clock
